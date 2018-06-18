@@ -252,6 +252,7 @@ exec 2>&1
 echo
 echo
 echo "PoC Use Case: Set up storage, networking, and other environment configurations"
+echo ansible nfs -m shell -a 'for i in {001..050}; do mkdir /srv/nfs/pv$i; chown nfsnobody:nfsnobody /srv/nfs/pv$i; chmod 777 /srv/nfs/pv$i; done'
 ansible nfs -m shell -a 'for i in {001..050}; do mkdir /srv/nfs/pv$i; chown nfsnobody:nfsnobody /srv/nfs/pv$i; chmod 777 /srv/nfs/pv$i; done'
 
 
@@ -264,7 +265,9 @@ echo
 echo
 echo "PoC Use Case: Ability to authenticate at the master console"
 if [ -n "$htuser" ]; then 
+  echo oc adm policy add-cluster-role-to-user cluster-admin $htuser
   oc adm policy add-cluster-role-to-user cluster-admin $htuser
+  echo oc adm policy add-cluster-role-to-user cluster-admin Karla
   oc adm policy add-cluster-role-to-user cluster-admin Karla
 fi
 if [ -n "$ldappasswd" ]; then 
@@ -299,7 +302,9 @@ cn=paymentapp,cn=groups,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com
 cn=ocp-platform,cn=groups,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com
 cn=ocp-production,cn=groups,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com
 EOF
+echo "oc adm groups sync --sync-config=$(pwd)/groupsync.yaml --whitelist=$(pwd)/whitelist.yaml --confirm"
 oc adm groups sync --sync-config=$(pwd)/groupsync.yaml --whitelist=$(pwd)/whitelist.yaml --confirm
+echo "oc adm policy add-cluster-role-to-group cluster-admin ocp-platform"
 oc adm policy add-cluster-role-to-group cluster-admin ocp-platform
 fi
 
@@ -307,12 +312,14 @@ echo
 echo
 echo "PoC Use Case: Registry has storage attached and working"
 registryPod=$(oc get pods -n default|grep docker-registry|cut -d' ' -f1)
+echo "oc describe pod ${registryPod} -n default"
 oc describe pod ${registryPod} -n default
 
 
 echo
 echo
 echo "PoC Use Case: Router is configured on each infranode"
+echo "oc get pods -o wide -n default |grep router"
 oc get pods -o wide -n default |grep router
 
 echo
@@ -343,6 +350,7 @@ spec:
   persistentVolumeReclaimPolicy: $policy
 EOF
 done
+echo "oc get pv|grep Available"
 oc get pv|grep Available
 
 echo
@@ -357,18 +365,21 @@ oc get route
 echo
 echo
 echo "PoC Use Case:  There are three masters working"
+echo "oc get nodes|grep master"
 oc get nodes|grep master
 
 
 echo
 echo
 echo "PoC Use Case: There are three etcd instances working"
+echo "ansible masters[0] -m shell -a '/usr/bin/etcdctl --cert-file /etc/etcd/peer.crt --key-file /etc/etcd/peer.key --ca-file /etc/etcd/ca.crt -C https://`hostname`:2379 cluster-health'"
 ansible masters[0] -m shell -a '/usr/bin/etcdctl --cert-file /etc/etcd/peer.crt --key-file /etc/etcd/peer.key --ca-file /etc/etcd/ca.crt -C https://`hostname`:2379 cluster-health'
 
 echo
 echo
 echo "PoC Use Case: There is a load balancer to access the masters called loadbalancer.$GUID.$DOMAIN"
-curl http://loadbalancer.$GUID.example.opentlc.com:9000/
+echo curl http://loadbalancer.$GUID.example.opentlc.com:9000/
+curl http://loadbalancer.$GUID.example.opentlc.com:9000/ | grep master
 
 echo
 echo
@@ -377,6 +388,7 @@ echo "PoC Use Case: There is a load balancer/DNS for both infranodes called *.ap
 echo
 echo
 echo "PoC Use Case: There are at least two infranodes, labeled env=infra"
+echo "oc get nodes -l env=infra"
 oc get nodes -l env=infra
 
 echo
@@ -386,22 +398,26 @@ echo "PoC Use Case: NetworkPolicy is configured and working with projects isolat
 echo
 echo
 echo "PoC Use Case: Aggregated logging is configured and working"
+echo "oc get pods -n logging"
 oc get pods -n logging
 
 echo
 echo
 echo "PoC Use Case: Metrics collection is configured and working"
+echo "oc get pods -n openshift-infra"
 oc get pods -n openshift-infra
 oc get pods -n openshift-metrics
 
 echo
 echo
 echo "PoC Use Case: Router and Registry Pods run on Infranodes"
+echo "oc get pods -n default -o wide"
 oc get pods -n default -o wide
 
 echo
 echo
 echo "PoC Use Case: Metrics and Logging components run on Infranodes"
+echo "oc get pods -n logging -o wide"
 oc get pods -n logging -o wide
 oc get pods -n openshift-infra -o wide
 oc get pods -n openshift-metrics -o wide
@@ -409,7 +425,8 @@ oc get pods -n openshift-metrics -o wide
 echo
 echo
 echo "PoC Use Case: Service Catalog, Template Service Broker, and Ansible Service Broker are all work"
-oc get pods --all-namespaces|grep 'broker\|catalog
+echo "oc get pods --all-namespaces|grep 'broker\|catalog'"
+oc get pods --all-namespaces|grep 'broker\|catalog'
 
 
 echo
