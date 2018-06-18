@@ -244,30 +244,58 @@ if [ "$answer" != "Y" ]; then
   exit 0
 fi
 
+echo
+echo "Starting the MitziCom OpenShift Instant PoC Deployment."
+echo "Be patient, this will take at least 30 minutes to finish."
+echo "You may follow the results log in Workdir/PoC-Results.txt"
 exec > PoC-Results.txt
 exec 2>&1
 
 echo
 echo
-echo "PoC Use Case: Set up storage, networking, and other environment configurations"
+echo "* PoC Use Case: Set up storage, networking, and other environment configurations"
+echo
+echo "----"
 echo ansible nfs -m shell -a 'for i in {001..050}; do mkdir /srv/nfs/pv$i; chown nfsnobody:nfsnobody /srv/nfs/pv$i; chmod 777 /srv/nfs/pv$i; done'
 echo
 ansible nfs -m shell -a 'for i in {001..050}; do mkdir /srv/nfs/pv$i; chown nfsnobody:nfsnobody /srv/nfs/pv$i; chmod 777 /srv/nfs/pv$i; done'
+echo "----"
 
 
+echo
+echo
+echo "* PoC Use Case: Provide instructions for the MitziCom administrator to deploy all the above in a single command"
+echo
+echo "----"
+echo "ansible-playbook -i ./hosts -f 20 /usr/share/ansible/openshift-ansible/playbooks/deploy_cluster.yml"
+echo
 ansible-playbook -i ./hosts -f 20  /usr/share/ansible/openshift-ansible/playbooks/prerequisites.yml
+echo "----"
+echo
+echo "----"
+echo "ansible-playbook -i ./hosts -f 20 /usr/share/ansible/openshift-ansible/playbooks/deploy_cluster.yml"
+echo
 ansible-playbook -i ./hosts -f 20 /usr/share/ansible/openshift-ansible/playbooks/deploy_cluster.yml
+echo "----"
 
+echo "----"
 ansible masters[0] -b -m fetch -a "src=/root/.kube/config dest=/root/.kube/config flat=yes"
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: Ability to authenticate at the master console"
+echo "* PoC Use Case: Ability to authenticate at the master console"
 if [ -n "$htuser" ]; then 
+  echo "----"
   echo oc adm policy add-cluster-role-to-user cluster-admin $htuser
+  echo
   oc adm policy add-cluster-role-to-user cluster-admin $htuser
+  echo
+  echo
   echo oc adm policy add-cluster-role-to-user cluster-admin Karla
+  echo
   oc adm policy add-cluster-role-to-user cluster-admin Karla
+  echo "----"
 fi
 if [ -n "$ldappasswd" ]; then 
 cat << EOF > groupsync.yaml
@@ -310,23 +338,31 @@ fi
 
 echo
 echo
-echo "PoC Use Case: Registry has storage attached and working"
+echo "* PoC Use Case: Registry has storage attached and working"
 registryPod=$(oc get pods -n default|grep docker-registry|cut -d' ' -f1)
+echo
+echo "----"
 echo "oc describe pod ${registryPod} -n default"
 echo
 oc describe pod ${registryPod} -n default
+echo "----"
 
 
 echo
 echo
-echo "PoC Use Case: Router is configured on each infranode"
+echo "* PoC Use Case: Router is configured on each infranode"
+echo
+echo "----"
 echo "oc get pods -o wide -n default |grep router"
 echo
 oc get pods -o wide -n default |grep router
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: PVs of different types are available for users to consume"
+echo "* PoC Use Case: PVs of different types are available for users to consume"
+echo
+echo "----"
 size=5Gi
 mode=ReadWriteOnce
 policy=Recycle
@@ -355,55 +391,75 @@ done
 echo "oc get pv|grep Available"
 echo
 oc get pv|grep Available
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: Ability to deploy a simple app (nodejs-mongo-persistent)"
+echo "* PoC Use Case: Ability to deploy a simple app (nodejs-mongo-persistent)"
+echo
+echo "----"
 oc new-project smoke-test
 oc new-app nodejs-mongo-persistent
 oc get pod
 oc get route
+echo "----"
 
 
 echo
 echo
-echo "PoC Use Case:  There are three masters working"
+echo "* PoC Use Case:  There are three masters working"
 echo "oc get nodes|grep master"
 echo
+echo "----"
 oc get nodes|grep master
+echo "----"
 
 
 echo
 echo
-echo "PoC Use Case: There are three etcd instances working"
+echo "* PoC Use Case: There are three etcd instances working"
+echo
+echo "----"
 echo "ansible masters[0] -m shell -a '/usr/bin/etcdctl --cert-file /etc/etcd/peer.crt --key-file /etc/etcd/peer.key --ca-file /etc/etcd/ca.crt -C https://`hostname`:2379 cluster-health'"
 echo
 ansible masters[0] -m shell -a '/usr/bin/etcdctl --cert-file /etc/etcd/peer.crt --key-file /etc/etcd/peer.key --ca-file /etc/etcd/ca.crt -C https://`hostname`:2379 cluster-health'
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: There is a load balancer to access the masters called loadbalancer.$GUID.$DOMAIN"
+echo "* PoC Use Case: There is a load balancer to access the masters called loadbalancer.$GUID.$DOMAIN"
+echo
+echo "----"
 echo curl http://loadbalancer.$GUID.${DOMAIN}:9000/
 echo
 curl http://loadbalancer.$GUID.${DOMAIN}:9000/ | grep master
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: There is a load balancer/DNS for both infranodes called *.apps.$GUID.$DOMAIN"
+echo "* PoC Use Case: There is a load balancer/DNS for both infranodes called *.apps.$GUID.$DOMAIN"
+echo
+echo "----"
 echo "host *.apps.${GUID}.${DOMAIN}"
 echo
 host *.apps.${GUID}.${DOMAIN}
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: There are at least two infranodes, labeled env=infra"
+echo "* PoC Use Case: There are at least two infranodes, labeled env=infra"
+echo
+echo "----"
 echo "oc get nodes -l env=infra"
 echo
 oc get nodes -l env=infra
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: NetworkPolicy is configured and working with projects isolated by default (simulate Multitenancy)"
+echo "* PoC Use Case: NetworkPolicy is configured and working with projects isolated by default (simulate Multitenancy)"
+echo
+echo "----"
 echo "oc label namespace default name=default"
 oc label namespace default name=default
 cat <<EOF | oc create -n default -f -
@@ -540,50 +596,77 @@ echo "ansible masters -i hosts -m lineinfile -a \"path=/etc/origin/master/master
 ansible masters -i hosts -m lineinfile -a "path=/etc/origin/master/master-config.yaml regexp='^(.*)projectRequestTemplate:(.*)' line='  projectRequestTemplate: \'default/project-request\''"
 ansible masters -i hosts -m service -a "name=atomic-openshift-master-api state=restarted"
 ansible masters -i hosts -m service -a "name=atomic-openshift-master-controllers state=restarted"
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: Aggregated logging is configured and working"
+echo "* PoC Use Case: Aggregated logging is configured and working"
+echo
+echo "----"
 echo "oc get pods -n logging"
 echo
 oc get pods -n logging
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: Metrics collection is configured and working"
+echo "* PoC Use Case: Metrics collection is configured and working"
+echo
+echo "----"
 echo "oc get pods -n openshift-infra"
 echo
 oc get pods -n openshift-infra
 oc get pods -n openshift-metrics
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: Router and Registry Pods run on Infranodes"
+echo "* PoC Use Case: Router and Registry Pods run on Infranodes"
+echo
+echo "----"
 echo "oc get pods -n default -o wide"
 echo
 oc get pods -n default -o wide
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: Metrics and Logging components run on Infranodes"
+echo "* PoC Use Case: Metrics and Logging components run on Infranodes"
+echo
+echo "----"
 echo "oc get pods -n logging -o wide"
 echo
 oc get pods -n logging -o wide
 oc get pods -n openshift-infra -o wide
 oc get pods -n openshift-metrics -o wide
+echo "----"
 
 echo
 echo
-echo "PoC Use Case: Service Catalog, Template Service Broker, and Ansible Service Broker are all work"
+echo "* PoC Use Case: Service Catalog, Template Service Broker, and Ansible Service Broker are all work"
+echo
+echo "----"
 echo "oc get pods --all-namespaces|grep 'broker\|catalog'"
 echo
 oc get pods --all-namespaces|grep 'broker\|catalog'
+echo "----"
 
 
+echo "* PoC Use Case: Jenkins deploys openshift-tasks app"
+echo
+echo "----"
+echo oc new-project jenkins
+oc new-project jenkins
+echo oc new-app jenkins-persistent
+oc new-app jenkins-persistent
+echo "----"
+
 echo
 echo
-echo "PoC Use Case: "
+echo "* PoC Use Case: "
 echo
+echo "----"
+echo "----"
 
 
 
