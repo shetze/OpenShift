@@ -463,134 +463,219 @@ echo "----"
 echo "oc label namespace default name=default"
 oc label namespace default name=default
 cat <<EOF | oc create -n default -f -
-apiVersion: v1
-kind: Template
-metadata:
-  creationTimestamp: null
-  name: project-request
-objects:
-- apiVersion: project.openshift.io/v1
-  kind: Project
-  metadata:
-    annotations:
-      openshift.io/description: ${PROJECT_DESCRIPTION}
-      openshift.io/display-name: ${PROJECT_DISPLAYNAME}
-      openshift.io/requester: ${PROJECT_REQUESTING_USER}
-    creationTimestamp: null
-    name: ${PROJECT_NAME}
-  spec: {}
-  status: {}
-- apiVersion: rbac.authorization.k8s.io/v1beta1
-  kind: RoleBinding
-  metadata:
-    creationTimestamp: null
-    name: system:image-pullers
-    namespace: ${PROJECT_NAME}
-  roleRef:
-    apiGroup: rbac.authorization.k8s.io
-    kind: ClusterRole
-    name: system:image-puller
-  subjects:
-  - apiGroup: rbac.authorization.k8s.io
-    kind: Group
-    name: system:serviceaccounts:${PROJECT_NAME}
-- apiVersion: rbac.authorization.k8s.io/v1beta1
-  kind: RoleBinding
-  metadata:
-    creationTimestamp: null
-    name: system:image-builders
-    namespace: ${PROJECT_NAME}
-  roleRef:
-    apiGroup: rbac.authorization.k8s.io
-    kind: ClusterRole
-    name: system:image-builder
-  subjects:
-  - kind: ServiceAccount
-    name: builder
-    namespace: ${PROJECT_NAME}
-- apiVersion: rbac.authorization.k8s.io/v1beta1
-  kind: RoleBinding
-  metadata:
-    creationTimestamp: null
-    name: system:deployers
-    namespace: ${PROJECT_NAME}
-  roleRef:
-    apiGroup: rbac.authorization.k8s.io
-    kind: ClusterRole
-    name: system:deployer
-  subjects:
-  - kind: ServiceAccount
-    name: deployer
-    namespace: ${PROJECT_NAME}
-- apiVersion: rbac.authorization.k8s.io/v1beta1
-  kind: RoleBinding
-  metadata:
-    creationTimestamp: null
-    name: admin
-    namespace: ${PROJECT_NAME}
-  roleRef:
-    apiGroup: rbac.authorization.k8s.io
-    kind: ClusterRole
-    name: admin
-  subjects:
-  - apiGroup: rbac.authorization.k8s.io
-    kind: User
-    name: ${PROJECT_ADMIN_USER}
-- apiVersion: networking.k8s.io/v1
-  kind: NetworkPolicy
-  metadata:
-    name: allow-from-same-namespace
-  spec:
-    podSelector:
-    ingress:
-    - from:
-      - podSelector: {}
-- apiVersion: networking.k8s.io/v1
-  kind: NetworkPolicy
-  metadata:
-    name: allow-from-default-namespace
-  spec:
-    podSelector:
-    ingress:
-    - from:
-      - namespaceSelector:
-          matchLabels:
-            name: default
-- apiVersion: v1
-  kind: LimitRange
-  metadata:
-    creationTimestamp: null
-    name: core-resource-limits
-  spec:
-    limits:
-    - type: Pod
-      max:
-        cpu: "10"
-        memory: 8Gi
-      min:
-        cpu: 50m
-        memory: 100Mi
-    - type: Container
-      min:
-        cpu: 50m
-        memory: 100Mi
-      max:
-        cpu: "10"
-        memory: 8Gi
-      default:
-        cpu: 50m
-        memory: 100Mi
-      defaultRequest:
-        cpu: 50m
-        memory: 100Mi
-      maxLimitRequestRatio:
-        cpu: "200"
-parameters:
-- name: PROJECT_NAME
-- name: PROJECT_DISPLAYNAME
-- name: PROJECT_DESCRIPTION
-- name: PROJECT_ADMIN_USER
-- name: PROJECT_REQUESTING_USER
+{
+    "kind": "Template",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "project-request",
+        "creationTimestamp": null
+    },
+    "objects": [
+        {
+            "apiVersion": "project.openshift.io/v1",
+            "kind": "Project",
+            "metadata": {
+                "annotations": {
+                    "openshift.io/description": "${PROJECT_DESCRIPTION}",
+                    "openshift.io/display-name": "${PROJECT_DISPLAYNAME}",
+                    "openshift.io/requester": "${PROJECT_REQUESTING_USER}"
+                },
+                "creationTimestamp": null,
+                "name": "${PROJECT_NAME}"
+            },
+            "spec": {},
+            "status": {}
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1beta1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": null,
+                "name": "system:image-pullers",
+                "namespace": "${PROJECT_NAME}"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "ClusterRole",
+                "name": "system:image-puller"
+            },
+            "subjects": [
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "Group",
+                    "name": "system:serviceaccounts:${PROJECT_NAME}"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1beta1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": null,
+                "name": "system:image-builders",
+                "namespace": "${PROJECT_NAME}"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "ClusterRole",
+                "name": "system:image-builder"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "builder",
+                    "namespace": "${PROJECT_NAME}"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1beta1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": null,
+                "name": "system:deployers",
+                "namespace": "${PROJECT_NAME}"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "ClusterRole",
+                "name": "system:deployer"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "deployer",
+                    "namespace": "${PROJECT_NAME}"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1beta1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": null,
+                "name": "admin",
+                "namespace": "${PROJECT_NAME}"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "ClusterRole",
+                "name": "admin"
+            },
+            "subjects": [
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "User",
+                    "name": "${PROJECT_ADMIN_USER}"
+                }
+            ]
+        },
+        {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "NetworkPolicy",
+            "metadata": {
+                "name": "allow-from-same-namespace"
+            },
+            "spec": {
+                "ingress": [
+                    {
+                        "from": [
+                            {
+                                "podSelector": {}
+                            }
+                        ]
+                    }
+                ],
+                "podSelector": null
+            }
+        },
+        {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "NetworkPolicy",
+            "metadata": {
+                "name": "allow-from-default-namespace"
+            },
+            "spec": {
+                "ingress": [
+                    {
+                        "from": [
+                            {
+                                "namespaceSelector": {
+                                    "matchLabels": {
+                                        "name": "default"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "podSelector": null
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "LimitRange",
+            "metadata": {
+                "creationTimestamp": null,
+                "name": "core-resource-limits"
+            },
+            "spec": {
+                "limits": [
+                    {
+                        "max": {
+                            "cpu": "10",
+                            "memory": "8Gi"
+                        },
+                        "min": {
+                            "cpu": "50m",
+                            "memory": "100Mi"
+                        },
+                        "type": "Pod"
+                    },
+                    {
+                        "default": {
+                            "cpu": "50m",
+                            "memory": "100Mi"
+                        },
+                        "defaultRequest": {
+                            "cpu": "50m",
+                            "memory": "100Mi"
+                        },
+                        "max": {
+                            "cpu": "10",
+                            "memory": "8Gi"
+                        },
+                        "maxLimitRequestRatio": {
+                            "cpu": "200"
+                        },
+                        "min": {
+                            "cpu": "50m",
+                            "memory": "100Mi"
+                        },
+                        "type": "Container"
+                    }
+                ]
+            }
+        }
+    ],
+    "parameters": [
+        {
+            "name": "PROJECT_NAME"
+        },
+        {
+            "name": "PROJECT_DISPLAYNAME"
+        },
+        {
+            "name": "PROJECT_DESCRIPTION"
+        },
+        {
+            "name": "PROJECT_ADMIN_USER"
+        },
+        {
+            "name": "PROJECT_REQUESTING_USER"
+        }
+    ]
+}
 EOF
 echo "ansible masters -i hosts -m lineinfile -a \"path=/etc/origin/master/master-config.yaml regexp='^(.*)projectRequestTemplate:(.*)' line='  projectRequestTemplate: \'default/project-request\''\""
 ansible masters -i hosts -m lineinfile -a "path=/etc/origin/master/master-config.yaml regexp='^(.*)projectRequestTemplate:(.*)' line='  projectRequestTemplate: \'default/project-request\''"
@@ -666,9 +751,17 @@ echo
 echo "* PoC Use Case: "
 echo
 echo "----"
+oc create -f https://raw.githubusercontent.com/jboss-openshift/application-templates/ose-v1.4.12/eap/eap70-image-stream.json -n openshift
+git clone https://github.com/OpenShiftDemos/openshift-cd-demo.git
+cd openshift-cd-demo
+oc new-project dev --display-name="Tasks - Dev"
+oc new-project stage --display-name="Tasks - Stage"
+oc new-project cicd --display-name="CI/CD"
+oc policy add-role-to-user edit system:serviceaccount:cicd:jenkins -n dev
+oc policy add-role-to-user edit system:serviceaccount:cicd:jenkins -n stage
+# oc new-app -n cicd -f cicd-template.yaml
+oc new-app -n cicd -f cicd-template.yaml --param=WITH_CHE=true
+oc autoscale stage/openshift-tasks --min 1 --max 5 --cpu-percent=80
 echo "----"
-
-
-
 
 
