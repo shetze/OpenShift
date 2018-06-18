@@ -1,3 +1,4 @@
+DOMAIN=example.opentlc.com
 read -p "
 This script will perform a completely automated OpenShift deployment into the OpenShift HA Deployment lab environment.
 In order to get things going you need to provide some details about your current lab environment.
@@ -46,8 +47,8 @@ openshift_enable_unsupported_configurations=True
 openshift_deployment_type=openshift-enterprise
 
 openshift_master_cluster_hostname=loadbalancer1.${GUID}.internal
-openshift_master_cluster_public_hostname=loadbalancer.${GUID}.example.opentlc.com
-openshift_master_default_subdomain=apps.${GUID}.example.opentlc.com 
+openshift_master_cluster_public_hostname=loadbalancer.${GUID}.${DOMAIN}
+openshift_master_default_subdomain=apps.${GUID}.${DOMAIN}
 openshift_hosted_infra_selector='env=infra'
 osm_default_node_selector='env=app'
 # os_sdn_network_plugin_name='redhat/openshift-ovs-subnet'
@@ -82,19 +83,19 @@ fi
 
 if [ -z "$htuser" -a -n $ldappasswd ]; then 
 cat >> hosts <<EOF
-openshift_master_identity_providers=[{'name': 'ldap', 'challenge': 'true', 'login': 'true', 'kind': 'LDAPPasswordIdentityProvider','attributes': {'id': ['dn'], 'email': ['mail'], 'name': ['cn'], 'preferredUsername': ['uid']}, 'bindDN': 'uid=admin,cn=users,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com', 'bindPassword': '${ldappasswd}', 'ca': '/etc/origin/master/ipa-ca.crt','insecure': 'false', 'url': 'ldaps://ipa.shared.example.opentlc.com:636/cn=users,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com?uid?sub?(memberOf=cn=ocp-users,cn=groups,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com)'}]
+openshift_master_identity_providers=[{'name': 'ldap', 'challenge': 'true', 'login': 'true', 'kind': 'LDAPPasswordIdentityProvider','attributes': {'id': ['dn'], 'email': ['mail'], 'name': ['cn'], 'preferredUsername': ['uid']}, 'bindDN': 'uid=admin,cn=users,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com', 'bindPassword': '${ldappasswd}', 'ca': '/etc/origin/master/ipa-ca.crt','insecure': 'false', 'url': 'ldaps://ipa.shared.${DOMAIN}:636/cn=users,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com?uid?sub?(memberOf=cn=ocp-users,cn=groups,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com)'}]
 openshift_master_ldap_ca_file=$(pwd)/ipa-ca.crt
 EOF
-wget http://ipa.shared.example.opentlc.com/ipa/config/ca.crt -O ipa-ca.crt
+wget http://ipa.shared.${DOMAIN}/ipa/config/ca.crt -O ipa-ca.crt
 fi
 
 if [ -n "$htuser" -a -n $ldappasswd ]; then 
 cat >> hosts <<EOF
-openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider', 'filename': '/etc/origin/master/htpasswd'},{'name': 'ldap', 'challenge': 'true', 'login': 'true', 'kind': 'LDAPPasswordIdentityProvider','attributes': {'id': ['dn'], 'email': ['mail'], 'name': ['cn'], 'preferredUsername': ['uid']}, 'bindDN': 'uid=admin,cn=users,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com', 'bindPassword': '${ldappasswd}', 'ca': '/etc/origin/master/ipa-ca.crt','insecure': 'false', 'url': 'ldaps://ipa.shared.example.opentlc.com:636/cn=users,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com?uid?sub?(memberOf=cn=ocp-users,cn=groups,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com)'}]
+openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider', 'filename': '/etc/origin/master/htpasswd'},{'name': 'ldap', 'challenge': 'true', 'login': 'true', 'kind': 'LDAPPasswordIdentityProvider','attributes': {'id': ['dn'], 'email': ['mail'], 'name': ['cn'], 'preferredUsername': ['uid']}, 'bindDN': 'uid=admin,cn=users,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com', 'bindPassword': '${ldappasswd}', 'ca': '/etc/origin/master/ipa-ca.crt','insecure': 'false', 'url': 'ldaps://ipa.shared.${DOMAIN}:636/cn=users,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com?uid?sub?(memberOf=cn=ocp-users,cn=groups,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com)'}]
 openshift_master_ldap_ca_file=$(pwd)/ipa-ca.crt
 openshift_master_htpasswd_file=$(pwd)/htpasswd.openshift
 EOF
-wget http://ipa.shared.example.opentlc.com/ipa/config/ca.crt -O ipa-ca.crt
+wget http://ipa.shared.${DOMAIN}/ipa/config/ca.crt -O ipa-ca.crt
 htpasswd -bc htpasswd.openshift $htuser $htpasswd
 htpasswd -b htpasswd.openshift Karla $htpasswd
 htpasswd -b htpasswd.openshift Amy $htpasswd
@@ -237,14 +238,11 @@ EOF
 
 read -p "Ansible Inventory file created and ready to go. Type Y to proceed with the deployment? " answer
 
-if [ "$answer" -ne "Y" ]; then
+if [ "$answer" != "Y" ]; then
   echo "Thank you for trying the OpenShift PoC Deployment Script."
   echo "Keeping the Workdir for further investigation, please delete manually if you are done."
   exit 0
 fi
-
-
-echo "stdout_callback = skippy" >>
 
 exec > PoC-Results.txt
 exec 2>&1
@@ -253,6 +251,7 @@ echo
 echo
 echo "PoC Use Case: Set up storage, networking, and other environment configurations"
 echo ansible nfs -m shell -a 'for i in {001..050}; do mkdir /srv/nfs/pv$i; chown nfsnobody:nfsnobody /srv/nfs/pv$i; chmod 777 /srv/nfs/pv$i; done'
+echo
 ansible nfs -m shell -a 'for i in {001..050}; do mkdir /srv/nfs/pv$i; chown nfsnobody:nfsnobody /srv/nfs/pv$i; chmod 777 /srv/nfs/pv$i; done'
 
 
@@ -274,7 +273,7 @@ if [ -n "$ldappasswd" ]; then
 cat << EOF > groupsync.yaml
 kind: LDAPSyncConfig
 apiVersion: v1
-url: "ldap://ipa.shared.example.opentlc.com"
+url: "ldap://ipa.shared.${DOMAIN}"
 insecure: false
 ca: "$(pwd)/ipa-ca.crt"
 bindDN: "uid=admin,cn=users,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com"
@@ -305,6 +304,7 @@ EOF
 echo "oc adm groups sync --sync-config=$(pwd)/groupsync.yaml --whitelist=$(pwd)/whitelist.yaml --confirm"
 oc adm groups sync --sync-config=$(pwd)/groupsync.yaml --whitelist=$(pwd)/whitelist.yaml --confirm
 echo "oc adm policy add-cluster-role-to-group cluster-admin ocp-platform"
+echo
 oc adm policy add-cluster-role-to-group cluster-admin ocp-platform
 fi
 
@@ -313,6 +313,7 @@ echo
 echo "PoC Use Case: Registry has storage attached and working"
 registryPod=$(oc get pods -n default|grep docker-registry|cut -d' ' -f1)
 echo "oc describe pod ${registryPod} -n default"
+echo
 oc describe pod ${registryPod} -n default
 
 
@@ -320,6 +321,7 @@ echo
 echo
 echo "PoC Use Case: Router is configured on each infranode"
 echo "oc get pods -o wide -n default |grep router"
+echo
 oc get pods -o wide -n default |grep router
 
 echo
@@ -351,6 +353,7 @@ spec:
 EOF
 done
 echo "oc get pv|grep Available"
+echo
 oc get pv|grep Available
 
 echo
@@ -366,6 +369,7 @@ echo
 echo
 echo "PoC Use Case:  There are three masters working"
 echo "oc get nodes|grep master"
+echo
 oc get nodes|grep master
 
 
@@ -373,38 +377,182 @@ echo
 echo
 echo "PoC Use Case: There are three etcd instances working"
 echo "ansible masters[0] -m shell -a '/usr/bin/etcdctl --cert-file /etc/etcd/peer.crt --key-file /etc/etcd/peer.key --ca-file /etc/etcd/ca.crt -C https://`hostname`:2379 cluster-health'"
+echo
 ansible masters[0] -m shell -a '/usr/bin/etcdctl --cert-file /etc/etcd/peer.crt --key-file /etc/etcd/peer.key --ca-file /etc/etcd/ca.crt -C https://`hostname`:2379 cluster-health'
 
 echo
 echo
 echo "PoC Use Case: There is a load balancer to access the masters called loadbalancer.$GUID.$DOMAIN"
-echo curl http://loadbalancer.$GUID.example.opentlc.com:9000/
-curl http://loadbalancer.$GUID.example.opentlc.com:9000/ | grep master
+echo curl http://loadbalancer.$GUID.${DOMAIN}:9000/
+echo
+curl http://loadbalancer.$GUID.${DOMAIN}:9000/ | grep master
 
 echo
 echo
 echo "PoC Use Case: There is a load balancer/DNS for both infranodes called *.apps.$GUID.$DOMAIN"
+echo "host *.apps.${GUID}.${DOMAIN}"
+echo
+host *.apps.${GUID}.${DOMAIN}
 
 echo
 echo
 echo "PoC Use Case: There are at least two infranodes, labeled env=infra"
 echo "oc get nodes -l env=infra"
+echo
 oc get nodes -l env=infra
 
 echo
 echo
 echo "PoC Use Case: NetworkPolicy is configured and working with projects isolated by default (simulate Multitenancy)"
+echo "oc label namespace default name=default"
+oc label namespace default name=default
+cat <<EOF | oc create -n default -f -
+apiVersion: v1
+kind: Template
+metadata:
+  creationTimestamp: null
+  name: project-request
+objects:
+- apiVersion: project.openshift.io/v1
+  kind: Project
+  metadata:
+    annotations:
+      openshift.io/description: ${PROJECT_DESCRIPTION}
+      openshift.io/display-name: ${PROJECT_DISPLAYNAME}
+      openshift.io/requester: ${PROJECT_REQUESTING_USER}
+    creationTimestamp: null
+    name: ${PROJECT_NAME}
+  spec: {}
+  status: {}
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: null
+    name: system:image-pullers
+    namespace: ${PROJECT_NAME}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: system:image-puller
+  subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:serviceaccounts:${PROJECT_NAME}
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: null
+    name: system:image-builders
+    namespace: ${PROJECT_NAME}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: system:image-builder
+  subjects:
+  - kind: ServiceAccount
+    name: builder
+    namespace: ${PROJECT_NAME}
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: null
+    name: system:deployers
+    namespace: ${PROJECT_NAME}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: system:deployer
+  subjects:
+  - kind: ServiceAccount
+    name: deployer
+    namespace: ${PROJECT_NAME}
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: null
+    name: admin
+    namespace: ${PROJECT_NAME}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: admin
+  subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: ${PROJECT_ADMIN_USER}
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: allow-from-same-namespace
+  spec:
+    podSelector:
+    ingress:
+    - from:
+      - podSelector: {}
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: allow-from-default-namespace
+  spec:
+    podSelector:
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: default
+- apiVersion: v1
+  kind: LimitRange
+  metadata:
+    creationTimestamp: null
+    name: core-resource-limits
+  spec:
+    limits:
+    - type: Pod
+      max:
+        cpu: "10"
+        memory: 8Gi
+      min:
+        cpu: 50m
+        memory: 100Mi
+    - type: Container
+      min:
+        cpu: 50m
+        memory: 100Mi
+      max:
+        cpu: "10"
+        memory: 8Gi
+      default:
+        cpu: 50m
+        memory: 100Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 100Mi
+      maxLimitRequestRatio:
+        cpu: "200"
+parameters:
+- name: PROJECT_NAME
+- name: PROJECT_DISPLAYNAME
+- name: PROJECT_DESCRIPTION
+- name: PROJECT_ADMIN_USER
+- name: PROJECT_REQUESTING_USER
+EOF
+echo "ansible masters -i hosts -m lineinfile -a \"path=/etc/origin/master/master-config.yaml regexp='^(.*)projectRequestTemplate:(.*)' line='  projectRequestTemplate: \'default/project-request\''\""
+ansible masters -i hosts -m lineinfile -a "path=/etc/origin/master/master-config.yaml regexp='^(.*)projectRequestTemplate:(.*)' line='  projectRequestTemplate: \'default/project-request\''"
+ansible masters -i hosts -m service -a "name=atomic-openshift-master-api state=restarted"
+ansible masters -i hosts -m service -a "name=atomic-openshift-master-controllers state=restarted"
 
 echo
 echo
 echo "PoC Use Case: Aggregated logging is configured and working"
 echo "oc get pods -n logging"
+echo
 oc get pods -n logging
 
 echo
 echo
 echo "PoC Use Case: Metrics collection is configured and working"
 echo "oc get pods -n openshift-infra"
+echo
 oc get pods -n openshift-infra
 oc get pods -n openshift-metrics
 
@@ -412,12 +560,14 @@ echo
 echo
 echo "PoC Use Case: Router and Registry Pods run on Infranodes"
 echo "oc get pods -n default -o wide"
+echo
 oc get pods -n default -o wide
 
 echo
 echo
 echo "PoC Use Case: Metrics and Logging components run on Infranodes"
 echo "oc get pods -n logging -o wide"
+echo
 oc get pods -n logging -o wide
 oc get pods -n openshift-infra -o wide
 oc get pods -n openshift-metrics -o wide
@@ -426,12 +576,14 @@ echo
 echo
 echo "PoC Use Case: Service Catalog, Template Service Broker, and Ansible Service Broker are all work"
 echo "oc get pods --all-namespaces|grep 'broker\|catalog'"
+echo
 oc get pods --all-namespaces|grep 'broker\|catalog'
 
 
 echo
 echo
 echo "PoC Use Case: "
+echo
 
 
 
