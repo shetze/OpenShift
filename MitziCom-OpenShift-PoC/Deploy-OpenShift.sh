@@ -243,14 +243,26 @@ if [ "$answer" -ne "Y" ]; then
   exit 0
 fi
 
+
+echo "stdout_callback = skippy" >>
+
+exec > PoC-Results.txt
+exec 2>&1
+
+echo
+echo
+echo "PoC Use Case: Set up storage, networking, and other environment configurations"
 ansible nfs -m shell -a 'for i in {001..050}; do mkdir /srv/nfs/pv$i; chown nfsnobody:nfsnobody /srv/nfs/pv$i; chmod 777 /srv/nfs/pv$i; done'
+
 
 ansible-playbook -i ./hosts -f 20  /usr/share/ansible/openshift-ansible/playbooks/prerequisites.yml
 ansible-playbook -i ./hosts -f 20 /usr/share/ansible/openshift-ansible/playbooks/deploy_cluster.yml
 
 ansible masters[0] -b -m fetch -a "src=/root/.kube/config dest=/root/.kube/config flat=yes"
 
-# Ability to authenticate at the master console
+echo
+echo
+echo "PoC Use Case: Ability to authenticate at the master console"
 if [ -n "$htuser" ]; then 
   oc adm policy add-cluster-role-to-user cluster-admin $htuser
   oc adm policy add-cluster-role-to-user cluster-admin Karla
@@ -261,7 +273,7 @@ kind: LDAPSyncConfig
 apiVersion: v1
 url: "ldap://ipa.shared.example.opentlc.com"
 insecure: false
-ca: "/etc/origin/master/ipa-ca.crt"
+ca: "$(pwd)/ipa-ca.crt"
 bindDN: "uid=admin,cn=users,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com"
 bindPassword: "r3dh4t1!"
 rfc2307:
@@ -279,7 +291,8 @@ rfc2307:
         derefAliases: never
     userUIDAttribute: dn
     userNameAttributes: [ uid ]
-EOF 
+EOF
+
 cat << EOF > whitelist.yaml
 cn=portalapp,cn=groups,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com
 cn=paymentapp,cn=groups,cn=accounts,dc=shared,dc=example,dc=opentlc,dc=com
@@ -290,15 +303,21 @@ oc adm groups sync --sync-config=$(pwd)/groupsync.yaml --whitelist=$(pwd)/whitel
 oc adm policy add-cluster-role-to-group cluster-admin ocp-platform
 fi
 
-# Registry has storage attached and working
-registry-pod=$(oc get pods -n default|grep docker-registry|cut -d' ' -f1)
-oc info pod/${registry-pod} -n default
+echo
+echo
+echo "PoC Use Case: Registry has storage attached and working"
+registryPod=$(oc get pods -n default|grep docker-registry|cut -d' ' -f1)
+oc describe pod ${registryPod} -n default
 
 
-# Router is configured on each infranode
+echo
+echo
+echo "PoC Use Case: Router is configured on each infranode"
 oc get pods -o wide -n default |grep router
 
-# PVs of different types are available for users to consume
+echo
+echo
+echo "PoC Use Case: PVs of different types are available for users to consume"
 size=5Gi
 mode=ReadWriteOnce
 policy=Recycle
@@ -326,28 +345,76 @@ EOF
 done
 oc get pv|grep Available
 
-# Ability to deploy a simple app (nodejs-mongo-persistent)
+echo
+echo
+echo "PoC Use Case: Ability to deploy a simple app (nodejs-mongo-persistent)"
 oc new-project smoke-test
 oc new-app nodejs-mongo-persistent
 oc get pod
 oc get route
 
 
-# There are three masters working
+echo
+echo
+echo "PoC Use Case:  There are three masters working"
 oc get nodes|grep master
 
 
-# There are three etcd instances working
+echo
+echo
+echo "PoC Use Case: There are three etcd instances working"
 ansible masters[0] -m shell -a '/usr/bin/etcdctl --cert-file /etc/etcd/peer.crt --key-file /etc/etcd/peer.key --ca-file /etc/etcd/ca.crt -C https://`hostname`:2379 cluster-health'
 
-# There is a load balancer to access the masters called loadbalancer.$GUID.$DOMAIN
+echo
+echo
+echo "PoC Use Case: There is a load balancer to access the masters called loadbalancer.$GUID.$DOMAIN"
 curl http://loadbalancer.$GUID.example.opentlc.com:9000/
 
-# There is a load balancer/DNS for both infranodes called *.apps.$GUID.$DOMAIN
+echo
+echo
+echo "PoC Use Case: There is a load balancer/DNS for both infranodes called *.apps.$GUID.$DOMAIN"
 
-# There are at least two infranodes, labeled env=infra
+echo
+echo
+echo "PoC Use Case: There are at least two infranodes, labeled env=infra"
 oc get nodes -l env=infra
 
+echo
+echo
+echo "PoC Use Case: NetworkPolicy is configured and working with projects isolated by default (simulate Multitenancy)"
+
+echo
+echo
+echo "PoC Use Case: Aggregated logging is configured and working"
+oc get pods -n logging
+
+echo
+echo
+echo "PoC Use Case: Metrics collection is configured and working"
+oc get pods -n openshift-infra
+oc get pods -n openshift-metrics
+
+echo
+echo
+echo "PoC Use Case: Router and Registry Pods run on Infranodes"
+oc get pods -n default -o wide
+
+echo
+echo
+echo "PoC Use Case: Metrics and Logging components run on Infranodes"
+oc get pods -n logging -o wide
+oc get pods -n openshift-infra -o wide
+oc get pods -n openshift-metrics -o wide
+
+echo
+echo
+echo "PoC Use Case: Service Catalog, Template Service Broker, and Ansible Service Broker are all work"
+oc get pods --all-namespaces|grep 'broker\|catalog
+
+
+echo
+echo
+echo "PoC Use Case: "
 
 
 
