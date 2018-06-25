@@ -247,7 +247,7 @@ fi
 echo
 echo "Starting the MitziCom OpenShift Instant PoC Deployment."
 echo "Be patient, this will take at least 30 minutes to finish."
-echo "You may follow the results log in Workdir/PoC-Results.txt"
+echo "You may follow the results log in Workdir/PoC-Results.adoc"
 exec > PoC-Results.adoc
 exec 2>&1
 
@@ -284,6 +284,8 @@ ansible-playbook -i ./hosts -f 20 /usr/share/ansible/openshift-ansible/playbooks
 echo "----"
 
 echo "----"
+echo ansible masters[0] -b -m fetch -a \"src=/root/.kube/config dest=/root/.kube/config flat=yes\"
+echo
 ansible masters[0] -b -m fetch -a "src=/root/.kube/config dest=/root/.kube/config flat=yes"
 echo "----"
 
@@ -303,6 +305,7 @@ if [ -n "$htuser" ]; then
   echo "----"
 fi
 if [ -n "$ldappasswd" ]; then 
+echo "----"
 cat << EOF > groupsync.yaml
 kind: LDAPSyncConfig
 apiVersion: v1
@@ -339,6 +342,7 @@ oc adm groups sync --sync-config=$(pwd)/groupsync.yaml --whitelist=$(pwd)/whitel
 echo "oc adm policy add-cluster-role-to-group cluster-admin ocp-platform"
 echo
 oc adm policy add-cluster-role-to-group cluster-admin ocp-platform
+echo "----"
 fi
 
 echo
@@ -492,11 +496,11 @@ objects:
   kind: Project
   metadata:
     annotations:
-      openshift.io/description: ${PROJECT_DESCRIPTION}
-      openshift.io/display-name: ${PROJECT_DISPLAYNAME}
-      openshift.io/requester: ${PROJECT_REQUESTING_USER}
+      openshift.io/description: \${PROJECT_DESCRIPTION}
+      openshift.io/display-name: \${PROJECT_DISPLAYNAME}
+      openshift.io/requester: \${PROJECT_REQUESTING_USER}
     creationTimestamp: null
-    name: ${PROJECT_NAME}
+    name: \${PROJECT_NAME}
   spec: {}
   status: {}
 - apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -504,7 +508,7 @@ objects:
   metadata:
     creationTimestamp: null
     name: system:image-pullers
-    namespace: ${PROJECT_NAME}
+    namespace: \${PROJECT_NAME}
   roleRef:
     apiGroup: rbac.authorization.k8s.io
     kind: ClusterRole
@@ -512,13 +516,13 @@ objects:
   subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: Group
-    name: system:serviceaccounts:${PROJECT_NAME}
+    name: system:serviceaccounts:\${PROJECT_NAME}
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: RoleBinding
   metadata:
     creationTimestamp: null
     name: system:image-builders
-    namespace: ${PROJECT_NAME}
+    namespace: \${PROJECT_NAME}
   roleRef:
     apiGroup: rbac.authorization.k8s.io
     kind: ClusterRole
@@ -526,13 +530,13 @@ objects:
   subjects:
   - kind: ServiceAccount
     name: builder
-    namespace: ${PROJECT_NAME}
+    namespace: \${PROJECT_NAME}
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: RoleBinding
   metadata:
     creationTimestamp: null
     name: system:deployers
-    namespace: ${PROJECT_NAME}
+    namespace: \${PROJECT_NAME}
   roleRef:
     apiGroup: rbac.authorization.k8s.io
     kind: ClusterRole
@@ -540,13 +544,13 @@ objects:
   subjects:
   - kind: ServiceAccount
     name: deployer
-    namespace: ${PROJECT_NAME}
+    namespace: \${PROJECT_NAME}
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: RoleBinding
   metadata:
     creationTimestamp: null
     name: admin
-    namespace: ${PROJECT_NAME}
+    namespace: \${PROJECT_NAME}
   roleRef:
     apiGroup: rbac.authorization.k8s.io
     kind: ClusterRole
@@ -554,7 +558,7 @@ objects:
   subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: User
-    name: ${PROJECT_ADMIN_USER}
+    name: \${PROJECT_ADMIN_USER}
 - apiVersion: networking.k8s.io/v1
   kind: NetworkPolicy
   metadata:
@@ -697,6 +701,14 @@ echo oc new-app jenkins-persistent
 echo
 oc new-project tasks --display-name="OpenShift Tasks"
 oc new-app jenkins-persistent
+echo "Wait for jenkinst to be deployed"
+sleep 300
+oc new-app eap70-basic-s2i \
+--param SOURCE_REPOSITORY_URL=https://github.com/wkulhanek/openshift-tasks.git \
+--param SOURCE_REPOSITORY_REF=master \
+--param CONTEXT_DIR= --param APPLICATION_NAME=tasks
+echo "Wait for JBoss to be deployed"
+sleep 300
 echo "----"
 
 echo
@@ -715,9 +727,9 @@ spec:
       jenkinsfile: |-
         node('maven') {
             stage 'build'
-            openshiftBuild(buildConfig: 'openshift-tasks', showBuildLogs: 'true')
+            openshiftBuild(buildConfig: 'tasks', showBuildLogs: 'true')
             stage 'deploy'
-            openshiftDeploy(deploymentConfig: 'openshift-tasks')
+            openshiftDeploy(deploymentConfig: 'tasks')
         }
     type: JenkinsPipeline
 EOF
@@ -732,6 +744,8 @@ echo "----"
 echo oc start-build openshift-tasks-pipeline
 echo
 oc start-build openshift-tasks-pipeline
+echo "Wait pipeline to build"
+sleep 300
 echo "----"
 
 echo
@@ -739,9 +753,9 @@ echo
 echo "* PoC Use Case: HPA is configured and working on production deployment of openshift-tasks"
 echo
 echo "----"
-echo oc autoscale tasks/openshift-tasks --min 1 --max 5 --cpu-percent=80
+echo oc autoscale tasks/tasks --min 1 --max 5 --cpu-percent=80
 echo
-oc autoscale tasks/openshift-tasks --min 1 --max 5 --cpu-percent=80
+oc autoscale tasks/tasks --min 1 --max 5 --cpu-percent=80
 echo "----"
 
 echo
@@ -755,11 +769,12 @@ echo
 echo "----"
 echo 
 echo
+oc whoami
 oc login --username=Amy --password=$htpasswd
 oc login --username=Andrew --password=$htpasswd
 oc login --username=Brian --password=$htpasswd
 oc login --username=Betty --password=$htpasswd
-oc login admin
+oc login --username=admin --password=$htpasswd
 oc get users
 echo "----"
 
