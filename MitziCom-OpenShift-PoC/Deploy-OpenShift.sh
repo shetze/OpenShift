@@ -272,15 +272,15 @@ echo
 echo "* PoC Use Case: Provide instructions for the MitziCom administrator to deploy all the above in a single command"
 echo
 echo "----"
-echo "ansible-playbook -i ./hosts -f 20 /usr/share/ansible/openshift-ansible/playbooks/deploy_cluster.yml"
+echo "ansible-playbook -i ./hosts -f 20 //usr/share/ansible/openshift-ansible/playbooks/prerequisites.yml"
 echo
-ansible-playbook -i ./hosts -f 20  /usr/share/ansible/openshift-ansible/playbooks/prerequisites.yml
+ansible-playbook -i ./hosts -f 20  /usr/share/ansible/openshift-ansible/playbooks/prerequisites.yml | tail -n 40
 echo "----"
 echo
 echo "----"
 echo "ansible-playbook -i ./hosts -f 20 /usr/share/ansible/openshift-ansible/playbooks/deploy_cluster.yml"
 echo
-ansible-playbook -i ./hosts -f 20 /usr/share/ansible/openshift-ansible/playbooks/deploy_cluster.yml
+ansible-playbook -i ./hosts -f 20 /usr/share/ansible/openshift-ansible/playbooks/deploy_cluster.yml | tail -n 40
 echo "----"
 
 echo "----"
@@ -621,8 +621,8 @@ oc create -n default -f project-request-template.yaml
 echo
 echo "ansible masters -i hosts -m lineinfile -a \"path=/etc/origin/master/master-config.yaml regexp='^(.*)projectRequestTemplate:(.*)' line='  projectRequestTemplate: \'default/project-request\''\""
 ansible masters -i hosts -m lineinfile -a "path=/etc/origin/master/master-config.yaml regexp='^(.*)projectRequestTemplate:(.*)' line='  projectRequestTemplate: \'default/project-request\''"
-ansible masters -i hosts -m service -a "name=atomic-openshift-master-api state=restarted"
-ansible masters -i hosts -m service -a "name=atomic-openshift-master-controllers state=restarted"
+ansible masters -i hosts -m service -a "name=atomic-openshift-master-api state=restarted" >/dev/null
+ansible masters -i hosts -m service -a "name=atomic-openshift-master-controllers state=restarted" >/dev/null
 echo "----"
 
 echo
@@ -682,15 +682,6 @@ echo
 echo "=== CICD Workflow"
 echo
 
-echo "* PoC Use Case: Jenkins deploys openshift-tasks app"
-echo
-echo "----"
-echo oc new-project jenkins
-oc new-project jenkins
-echo oc new-app jenkins-persistent
-oc new-app jenkins-persistent
-echo "----"
-
 echo
 echo
 echo "* PoC Use Case: Jenkins pod is running with a persistent volume"
@@ -701,12 +692,14 @@ echo oc new-app jenkins-persistent
 echo
 oc new-project tasks --display-name="OpenShift Tasks"
 oc new-app jenkins-persistent
+oc set resources dc jenkins --limits=memory=2Gi,cpu=1 --requests=memory=1Gi,cpu=500m
 echo "Wait for jenkinst to be deployed"
 sleep 300
 oc new-app eap70-basic-s2i \
---param SOURCE_REPOSITORY_URL=https://github.com/wkulhanek/openshift-tasks.git \
 --param SOURCE_REPOSITORY_REF=master \
---param CONTEXT_DIR= --param APPLICATION_NAME=tasks
+--param CONTEXT_DIR= --param APPLICATION_NAME=tasks \
+--param SOURCE_REPOSITORY_URL=https://github.com/OpenShiftDemos/openshift-tasks.git
+# --param SOURCE_REPOSITORY_URL=https://github.com/wkulhanek/openshift-tasks.git
 echo "Wait for JBoss to be deployed"
 sleep 300
 echo "----"
