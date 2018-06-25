@@ -693,15 +693,15 @@ echo
 oc new-project tasks --display-name="OpenShift Tasks"
 oc new-app jenkins-persistent
 oc set resources dc jenkins --limits=memory=2Gi,cpu=1 --requests=memory=1Gi,cpu=500m
-echo "Wait for jenkinst to be deployed"
-sleep 300
+echo "Wait for jenkins to be deployed"
+sleep 60
 oc new-app eap70-basic-s2i \
 --param SOURCE_REPOSITORY_REF=master \
 --param CONTEXT_DIR= --param APPLICATION_NAME=tasks \
 --param SOURCE_REPOSITORY_URL=https://github.com/OpenShiftDemos/openshift-tasks.git
 # --param SOURCE_REPOSITORY_URL=https://github.com/wkulhanek/openshift-tasks.git
 echo "Wait for JBoss to be deployed"
-sleep 300
+sleep 60
 echo "----"
 
 echo
@@ -738,7 +738,7 @@ echo oc start-build openshift-tasks-pipeline
 echo
 oc start-build openshift-tasks-pipeline
 echo "Wait pipeline to build"
-sleep 300
+sleep 60
 echo "----"
 
 echo
