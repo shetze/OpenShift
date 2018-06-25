@@ -248,8 +248,13 @@ echo
 echo "Starting the MitziCom OpenShift Instant PoC Deployment."
 echo "Be patient, this will take at least 30 minutes to finish."
 echo "You may follow the results log in Workdir/PoC-Results.txt"
-exec > PoC-Results.txt
+exec > PoC-Results.adoc
 exec 2>&1
+
+
+echo
+echo "=== Basic and HA Requirements"
+echo
 
 echo
 echo
@@ -466,6 +471,10 @@ oc get nodes -l env=infra
 echo "----"
 
 echo
+echo "=== Environment Configuration"
+echo
+
+echo
 echo
 echo "* PoC Use Case: NetworkPolicy is configured and working with projects isolated by default (simulate Multitenancy)"
 echo
@@ -665,6 +674,9 @@ echo
 oc get pods --all-namespaces|grep 'broker\|catalog'
 echo "----"
 
+echo
+echo "=== CICD Workflow"
+echo
 
 echo "* PoC Use Case: Jenkins deploys openshift-tasks app"
 echo
@@ -731,4 +743,147 @@ echo oc autoscale tasks/openshift-tasks --min 1 --max 5 --cpu-percent=80
 echo
 oc autoscale tasks/openshift-tasks --min 1 --max 5 --cpu-percent=80
 echo "----"
+
+echo
+echo "=== Multitenancy"
+echo
+
+echo
+echo
+echo "* PoC Use Case: Multiple Clients (customers) created"
+echo
+echo "----"
+echo 
+echo
+oc login --username=Amy --password=$htpasswd
+oc login --username=Andrew --password=$htpasswd
+oc login --username=Brian --password=$htpasswd
+oc login --username=Betty --password=$htpasswd
+oc login admin
+oc get users
+echo "----"
+
+echo
+echo
+echo "** PoC Use Case: Clients will be named Alpha Corp and Beta Corp (client=alpha, client=beta), and a "client=common" for unspecified customers."
+echo
+echo "----"
+echo 
+echo
+echo "----"
+
+echo
+echo
+echo "** PoC Use Case: Alpha Corp will have two users, Amy and Andrew"
+echo
+echo "----"
+echo 
+echo
+oc label user/admin client=admin
+oc label user/Amy client=alpha
+oc label user/Andrew client=alpha
+echo "----"
+
+echo
+echo
+echo "** PoC Use Case: Beta Corp will have two users, Brian and Betty"
+echo
+echo "----"
+echo 
+echo
+oc label user/Brian client=beta
+oc label user/Betty client=beta
+echo "----"
+
+echo
+echo
+echo "* PoC Use Case: Dedicated node for each Client"
+echo
+echo "----"
+echo 
+echo
+oc label node node1.${GUID}.internal client=alpha
+oc label node node2.${GUID}.internal client=beta
+oc label node node3.${GUID}.internal client=common
+oc adm new-project "Alpha Corp" --node-selector='client=alpha'
+oc adm new-project "Beta Corp" --node-selector='client=beta'
+echo "----"
+
+echo
+echo
+echo "* PoC Use Case: admissionControl plugin sets specific limits per label (client/customer)"
+echo
+echo "----"
+echo 
+echo
+cat <<EOF | oc create -f -
+admissionConfig:
+  pluginConfig:
+    ProjectRequestLimit:
+      configuration:
+        apiVersion: v1
+        kind: ProjectRequestLimitConfig
+        limits:
+        - selector:
+            client: admin 
+        - selector:
+            client: alpha
+          maxProjects: 10
+        - selector:
+            client: beta
+          maxProjects: 5
+        - maxProjects: 2 
+EOF
+echo "----"
+
+echo
+echo
+echo "* PoC Use Case: The new project template is modified so that it includes a LimitRange"
+echo
+echo "----"
+echo 
+echo
+oc describe template/project-request -n default
+echo "----"
+
+echo
+echo
+echo "* PoC Use Case: The new user template is used to create a user object with the specific label value"
+echo
+echo "----"
+echo 
+echo NOP
+echo "----"
+
+echo
+echo
+echo "* PoC Use Case: On-boarding new client documentation explains how to create a new client/customer"
+echo
+echo "----"
+echo 
+echo NOP
+echo "----"
+
+echo
+echo
+echo "* PoC Use Case: "
+echo
+echo "----"
+echo 
+echo
+echo "----"
+
+echo
+echo
+echo "* PoC Use Case: "
+echo
+echo "----"
+echo 
+echo
+echo "----"
+
+
+
+
+
 
